@@ -43,7 +43,6 @@ class GoogleCrawler:
             dispatcher.connect(self._item_scraped, signals.item_scraped)
             
             # Add the Google spider to the process with keywords
-            self.logger.info("Configuring crawler to return results directly")
             process.crawl(GoogleSpider, keywords=keywords)
             
             # Run the crawler
