@@ -43,11 +43,19 @@ def main():
         if not keywords:
             logger.error("No valid keywords provided. Exiting.")
             return
+        
+        # Configure crawler parameters
+        results_per_keyword = 20  # Target number of results per keyword
+        max_pages = 10  # Maximum pages to check per keyword
             
         # Step 2: Crawl Google for search results
         logger.info("Starting Google search crawler...")
         google_crawler = GoogleCrawler(logger=logger)
-        search_results = google_crawler.run(keywords)
+        search_results = google_crawler.run(
+            keywords=keywords, 
+            results_per_keyword=results_per_keyword,
+            max_pages=max_pages
+        )
         
         if not search_results:
             logger.error("No search results found. Exiting.")

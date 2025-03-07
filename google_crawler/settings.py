@@ -31,17 +31,4 @@ DOWNLOADER_MIDDLEWARES = {
     'scrapy_selenium.SeleniumMiddleware': None,  # Disable the original
 }
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'loggers': {
-        'selenium': {'level': 'WARNING'},
-        'urllib3': {'level': 'WARNING'},
-        'selenium.webdriver.remote': {'level': 'WARNING'},
-        'selenium.webdriver.chromium': {'level': 'WARNING'},
-        'scrapy.core.engine': {'level': 'INFO'},
-        'scrapy.middleware': {'level': 'WARNING'},
-        'scrapy.extensions': {'level': 'WARNING'},
-        'scrapy.utils.log': {'level': 'WARNING'},
-    }
-}
+LOG_LEVEL = 'INFO'

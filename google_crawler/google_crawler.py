@@ -15,12 +15,14 @@ class GoogleCrawler:
         self.logger = logger or logging.getLogger(self.__class__.__name__)
         self.results = []  # Will store search results directly
             
-    def run(self, keywords=None):
+    def run(self, keywords=None, results_per_keyword=20, max_pages=10):
         """
         Run the Google crawler and return search results directly
         
         Args:
             keywords (list): List of keywords to search for
+            results_per_keyword (int): Target number of results to fetch per keyword
+            max_pages (int): Maximum number of pages to crawl per keyword
             
         Returns:
             list: List of dictionaries with search results (keyword, title, link)
@@ -32,7 +34,9 @@ class GoogleCrawler:
             self.logger.warning("No keywords provided to GoogleCrawler")
             return []
             
-        self.logger.info(f"Starting Google crawler with {len(keywords)} keywords: {keywords}")
+        self.logger.info(f"Starting Google crawler with {len(keywords)} keywords")
+        self.logger.info(f"Target: collect up to {results_per_keyword} results per keyword")
+        self.logger.info(f"Maximum {max_pages} pages will be crawled per keyword")
         
         try:
             # Configure Scrapy crawler process
@@ -42,15 +46,18 @@ class GoogleCrawler:
             # Set up the signal to collect items
             dispatcher.connect(self._item_scraped, signals.item_scraped)
             
-            # Add the Google spider to the process with keywords
-            process.crawl(GoogleSpider, keywords=keywords)
+            # Add the Google spider to the process with all parameters
+            process.crawl(GoogleSpider, 
+                         keywords=keywords, 
+                         results_per_keyword=results_per_keyword,
+                         max_pages=max_pages)
             
             # Run the crawler
             self.logger.info("Starting Google search crawling...")
             process.start()
             
             # Process is complete at this point
-            self.logger.info(f"Google search crawling finished with {len(self.results)} results")
+            self.logger.info(f"Google search crawling finished with {len(self.results)} total results")
             
             return self.results
                 
@@ -64,5 +71,4 @@ class GoogleCrawler:
         Callback function for scrapy signal when an item is scraped
         """
         result_dict = dict(item)
-        # self.logger.debug(f"Item scraped: {result_dict}")
         self.results.append(result_dict)

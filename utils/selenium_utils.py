@@ -4,6 +4,15 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 def selenium_driver_factory(headless=False):
     """Create and return a Chrome WebDriver instance compatible with Selenium 4.x"""
+    # Silence Selenium WebDriver logging
+    import logging
+    selenium_logger = logging.getLogger('selenium')
+    selenium_logger.setLevel(logging.INFO)
+    
+    # Also silence related libraries
+    urllib3_logger = logging.getLogger('urllib3')
+    urllib3_logger.setLevel(logging.WARNING)
+    
     options = webdriver.ChromeOptions()
     
     if headless:
