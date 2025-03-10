@@ -5,6 +5,8 @@ from google_crawler.spiders.google_spider import GoogleSpider
 from scrapy import signals
 from scrapy.signalmanager import dispatcher
 
+from utils.logger import silence_scrapy_log
+
 class GoogleCrawler:
     """
     Manages the Google search crawling process using Scrapy and returns links directly
@@ -42,7 +44,8 @@ class GoogleCrawler:
             # Configure Scrapy crawler process
             settings = get_project_settings()
             process = CrawlerProcess(settings)
-            
+            silence_scrapy_log()  # Silence Scrapy log output
+
             # Set up the signal to collect items
             dispatcher.connect(self._item_scraped, signals.item_scraped)
             

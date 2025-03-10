@@ -91,7 +91,7 @@ def main():
                 
             # Generate filename with timestamp
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            output_file = f"output/search_results_{timestamp}.xlsx"
+            output_file = f"outputs/search_results_{timestamp}.xlsx"
             
             # Save to Excel
             df = pd.DataFrame(all_data)

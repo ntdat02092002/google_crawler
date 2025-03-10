@@ -27,3 +27,16 @@ def setup_logging(log_level=logging.INFO):
     logger.info(f"Logging initialized. Log file: {log_file}")
     
     return logger
+
+def silence_scrapy_log():
+    """Silence Scrapy loggers to reduce noise"""
+    from scrapy.utils import log
+    log.dictConfig({
+        'version': 1,
+        'disable_existing_loggers': True,
+        'loggers': {
+            'scrapy': {
+                'level': 'INFO',
+            }
+        }
+    })
