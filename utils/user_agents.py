@@ -12,6 +12,7 @@ def get_random_user_agent():
     ]
     return random.choice(_useragent_list)
 
+# stolen from https://github.com/Nv7-GitHub/googlesearch/blob/master/googlesearch/user_agents.py. Thanks!
 def get_lynx_useragent():
     """
     Generates a random user agent string mimicking the format of various software versions.
