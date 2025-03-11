@@ -45,8 +45,8 @@ def main():
             return
         
         # Configure crawler parameters
-        results_per_keyword = 20  # Target number of results per keyword
-        max_pages = 10  # Maximum pages to check per keyword
+        results_per_keyword = 150  # Target number of results per keyword
+        max_pages = 2  # Maximum pages to check per keyword
             
         # Step 2: Crawl Google for search results
         logger.info("Starting Google search crawler...")
