@@ -1,4 +1,5 @@
 import os
+import time
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
@@ -35,6 +36,7 @@ def main():
     logger = setup_logging()
     logger.info("Starting Google search and content extraction workflow")
     
+    time_start = datetime.now()
     try:
         # Step 1: Load keywords from file
         logger.info("Loading keywords from file...")
@@ -45,8 +47,8 @@ def main():
             return
         
         # Configure crawler parameters
-        results_per_keyword = 150  # Target number of results per keyword
-        max_pages = 2  # Maximum pages to check per keyword
+        results_per_keyword = 20  # Target number of results per keyword
+        max_pages = 3  # Maximum pages to check per keyword
             
         # Step 2: Crawl Google for search results
         logger.info("Starting Google search crawler...")
@@ -71,23 +73,28 @@ def main():
         for idx, result in enumerate(search_results, 1):
             logger.info(f"Processing result {idx}/{len(search_results)}: {result['title']}")
             
+            """
+                each result is a dictionary with the following
+                keys: ['keyword', 'title', 'link', 'description']
+            """
             content_data = content_scraper.scrape(
                 url=result['link'],
                 keyword=result['keyword'],
-                title=result['title']
+                title=result['title'],
+                description=result['description']
             )
-            
+            """
+                content_data is a dictionary with the following keys:
+                ['title', 'url', 'description', 'content', 'keyword']
+            """
             if content_data:
                 all_data.append(content_data)
-                logger.info(f"Successfully extracted content from {result['link']}")
-            else:
-                logger.warning(f"Failed to extract content from {result['link']}")
         
         # Step 4: Save results to Excel
         if all_data:
             # Create output dir if needed
-            if not os.path.exists('output'):
-                os.makedirs('output')
+            if not os.path.exists('outputs'):
+                os.makedirs('outputs')
                 
             # Generate filename with timestamp
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -103,6 +110,10 @@ def main():
     except Exception as e:
         logger.error(f"Error in main workflow: {str(e)}")
         logger.exception("Exception details:")
+    
+    time_end = datetime.now()
+    time_elapsed = time_end - time_start
+    logger.info(f"Workflow completed in {time_elapsed}")
 
 if __name__ == "__main__":
     main()

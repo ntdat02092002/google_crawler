@@ -1,55 +1,79 @@
 import logging
 import random
 import time
+import trafilatura
+
+from copy import deepcopy
+from trafilatura.settings import DEFAULT_CONFIG
+
+from utils.user_agents import get_user_agent_list
+from utils.logger import silence_trafilatura_log
 
 class ContentScraper:
     """
-    Simplified content scraper that takes a link and returns content
+    Simplified content scraper that takes a link and returns content using Trafilatura
     """
     
     def __init__(self, logger=None):
         """Initialize the content scraper"""
         self.logger = logger or logging.getLogger(self.__class__.__name__)
-        
-        # List of user agents for rotation (used as needed when implemented)
-        self.user_agents = [
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0 Safari/537.36",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0 Safari/537.36",
-        ]
+
+        custom_config = deepcopy(DEFAULT_CONFIG)
+        custom_config['DEFAULT']['USER_AGENTS'] = "\n".join(get_user_agent_list())
+
+        self.custom_config = custom_config
+
+        silence_trafilatura_log()
     
-    def scrape(self, url, keyword, title):
+    def scrape(self, url, keyword, title, description):
         """
-        Scrape content from a specific URL.
+        Scrape content from a specific URL using Trafilatura.
         
         Args:
             url (str): The URL to scrape
             keyword (str): The keyword that found this URL
             title (str): The title of the search result
+            description (str): The description of the search result
             
         Returns:
             dict: Scraped content with standard fields
         """
         self.logger.info(f"Scraping content from: {url}")
         
-        try:
-            # This is a placeholder - implement actual scraping logic as needed
-            # In a real implementation, you would:
-            # 1. Make HTTP request to the URL
-            # 2. Parse the HTML
-            # 3. Extract the content
-            # 4. Return structured data
+        try:  
+            # Use trafilatura's built-in fetch function
+            downloaded = trafilatura.fetch_url(
+                url,
+                config=self.custom_config,
+            )
             
-            # Simulate processing delay
-            time.sleep(random.uniform(0.5, 1.0))
+            if downloaded is None:
+                self.logger.error(f"Failed to download content from {url}")
+                content = "Failed to download content"
+            else:
+                # Extract text content from the downloaded HTML
+                content = trafilatura.extract(downloaded, config=self.custom_config)
+                
+                if not content:
+                    self.logger.warning(f"Trafilatura couldn't extract meaningful content from {url}")
+                    content = "No meaningful content could be extracted"
             
-            # Return placeholder data
+            # Return structured data
             return {
                 'title': title,
                 'url': url,
-                'content': f"Hello! This is placeholder content for {url}",
-                'keyword': keyword
+                'description': description,
+                'content': content,
+                'keyword': keyword,
             }
             
         except Exception as e:
             self.logger.error(f"Error scraping {url}: {str(e)}")
-            return None
+            # Return basic information even on error
+            return {
+                'title': title,
+                'url': url,
+                'description': description,
+                'content': f"Error extracting content: {str(e)}",
+                'keyword': keyword,
+            }

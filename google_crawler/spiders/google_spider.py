@@ -61,7 +61,7 @@ class GoogleSpider(scrapy.Spider):
                 meta={
                     "keyword": keyword,
                     "page": 0,
-                    "selenium": False,
+                    "selenium": True,
                     "dont_merge_cookies": False,
                     "wait_time": 3  # Wait 3 seconds for the page to load
                 },
@@ -90,7 +90,8 @@ class GoogleSpider(scrapy.Spider):
             title = result.css("a span.CVA68e::text").get()
             
             # Extract description - find <span class="FrIlee"> 
-            description = result.css("span.FrIlee::text").get()
+            description_parts = result.css("span.FrIlee *::text").getall()
+            description = description_parts[-1].strip() if description_parts else ""
             
             # Process link if it exists
             if link_raw and title:
@@ -109,7 +110,6 @@ class GoogleSpider(scrapy.Spider):
                         'link': link,
                         'description': description.strip() if description else ""
                     }
-                    
                     results_on_page += 1
                     self.results_count[keyword] += 1
                     yield item
@@ -143,7 +143,7 @@ class GoogleSpider(scrapy.Spider):
                     meta={
                         "keyword": keyword,
                         "page": current_page + 1,  # Increment page counter
-                        "selenium": False,
+                        "selenium": True,
                         "dont_merge_cookies": False,
                         "wait_time": 3
                     },
