@@ -33,7 +33,7 @@ def silence_scrapy_log():
     from scrapy.utils import log
     log.dictConfig({
         'version': 1,
-        'disable_existing_loggers': True,
+        'disable_existing_loggers': False,
         'loggers': {
             'scrapy': {
                 'level': 'INFO',
