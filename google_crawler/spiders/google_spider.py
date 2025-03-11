@@ -1,8 +1,7 @@
 import scrapy
 import logging
-import random
-import urllib
-import time
+import urllib.parse
+from urllib.parse import unquote
 
 from utils.user_agents import get_lynx_useragent
 
@@ -42,45 +41,33 @@ class GoogleSpider(scrapy.Spider):
         return get_lynx_useragent()
     
     def start_requests(self):
-        """Generate initial search requests for each keyword (first page only)"""
+        """Generate initial search requests for each keyword"""
         self.logger.info(f"Starting requests for keywords: {self.keywords}")
         
-        # Group keywords into batches and add delays between batches
-        batch_size = 5  # Process keywords in small batches
-        
-        for i in range(0, len(self.keywords), batch_size):
-            batch = self.keywords[i:i+batch_size]
+        # Let Scrapy handle throttling and concurrency through its AutoThrottle extension
+        for keyword in self.keywords:
+            # Request as many results as needed on first page
+            encoded_keyword = urllib.parse.quote(keyword)
+            # Add num parameter to try to get more results on first page
+            url = f"https://www.google.com/search?q={encoded_keyword}&num={self.results_per_keyword}&hl=vi&gl=vn&pws=0"
             
-            for keyword in batch:
-                # Request as many results as needed on first page
-                encoded_keyword = urllib.parse.quote(keyword)
-                # Add num parameter to try to get more results on first page
-                url = f"https://www.google.com/search?q={encoded_keyword}&num={self.results_per_keyword}&hl=vi&gl=vn&pws=0"
-                
-                # Use random user agent for each request
-                user_agent = self.get_random_user_agent()
-                
-                self.logger.info(f"Starting search for: '{keyword}'")
-                yield scrapy.Request(
-                    url=url,
-                    callback=self.parse,
-                    meta={
-                        "keyword": keyword,
-                        "page": 0,
-                        "selenium": False,
-                        "dont_merge_cookies": False,
-                        "wait_time": 3  # Wait 3 seconds for the page to load
-                    },
-                    headers={"User-Agent": user_agent, "Accept": "*/*"},
-                    cookies=self.cookies  # Add cookies to bypass consent page
-                )
-                
-                time.sleep(2)  # Small delay between keywords in a batch
+            # Use random user agent for each request
+            user_agent = self.get_random_user_agent()
             
-            # Add a larger delay between batches
-            if i + batch_size < len(self.keywords):
-                time.sleep(5)  # 5-second delay between batches
-
+            self.logger.info(f"Starting search for: '{keyword}'")
+            yield scrapy.Request(
+                url=url,
+                callback=self.parse,
+                meta={
+                    "keyword": keyword,
+                    "page": 0,
+                    "selenium": False,
+                    "dont_merge_cookies": False,
+                    "wait_time": 3  # Wait 3 seconds for the page to load
+                },
+                headers={"User-Agent": user_agent, "Accept": "*/*"},
+                cookies=self.cookies  # Add cookies to bypass consent page
+            )
 
     def parse(self, response):
         keyword = response.meta["keyword"]
@@ -108,7 +95,7 @@ class GoogleSpider(scrapy.Spider):
             # Process link if it exists
             if link_raw and title:
                 # Clean and decode the link URL
-                link = urllib.parse.unquote(link_raw.split("&")[0].replace("/url?q=", ""))
+                link = unquote(link_raw.split("&")[0].replace("/url?q=", ""))
                 
                 # Check if it's a valid link and not already visited
                 if link.startswith('http') and 'google.com/search' not in link and link not in self.visited_urls:
@@ -149,6 +136,7 @@ class GoogleSpider(scrapy.Spider):
                 # Use random user agent for each request
                 user_agent = self.get_random_user_agent()
                 
+                # Let Scrapy's AutoThrottle handle the timing
                 yield scrapy.Request(
                     url=next_url,
                     callback=self.parse,
