@@ -4,6 +4,8 @@ import random
 import urllib
 import time
 
+from utils.user_agents import get_lynx_useragent
+
 class GoogleSpider(scrapy.Spider):
     name = "GoogleSpider" 
     
@@ -23,24 +25,21 @@ class GoogleSpider(scrapy.Spider):
         
         self.logger.info(f"Spider initialized with {len(self.keywords)} keywords")
         self.logger.info(f"Target: {self.results_per_keyword} results per keyword, max {self.max_pages} pages per keyword")
-        
-        self.user_agents = [
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Safari/605.1.15'
-        ]
 
         # Dictionary to track count of results per keyword
         self.results_count = {keyword: 0 for keyword in self.keywords}
         
         # Track already visited keywords to avoid duplicates
         self.visited_urls = set()
+
+        self.cookies = {
+            'CONSENT': 'PENDING+987',  # Bypasses the consent page
+            'SOCS': 'CAESHAgBEhIaAB',
+        }
     
     def get_random_user_agent(self):
         """Get a random user agent string"""
-        return random.choice(self.user_agents)
+        return get_lynx_useragent()
     
     def start_requests(self):
         """Generate initial search requests for each keyword (first page only)"""
@@ -53,9 +52,10 @@ class GoogleSpider(scrapy.Spider):
             batch = self.keywords[i:i+batch_size]
             
             for keyword in batch:
-                # Start with page 0 for each keyword
+                # Request as many results as needed on first page
                 encoded_keyword = urllib.parse.quote(keyword)
-                url = f"https://www.google.com/search?q={encoded_keyword}&start=0&hl=vi&gl=vn&pws=0"
+                # Add num parameter to try to get more results on first page
+                url = f"https://www.google.com/search?q={encoded_keyword}&num={self.results_per_keyword}&hl=vi&gl=vn&pws=0"
                 
                 # Use random user agent for each request
                 user_agent = self.get_random_user_agent()
@@ -67,11 +67,12 @@ class GoogleSpider(scrapy.Spider):
                     meta={
                         "keyword": keyword,
                         "page": 0,
-                        "selenium": True,  # Use Selenium middleware
-                        "dont_merge_cookies": True,
+                        "selenium": False,
+                        "dont_merge_cookies": False,
                         "wait_time": 3  # Wait 3 seconds for the page to load
                     },
-                    headers={"User-Agent": user_agent}
+                    headers={"User-Agent": user_agent, "Accept": "*/*"},
+                    cookies=self.cookies  # Add cookies to bypass consent page
                 )
                 
                 time.sleep(2)  # Small delay between keywords in a batch
@@ -84,106 +85,85 @@ class GoogleSpider(scrapy.Spider):
     def parse(self, response):
         keyword = response.meta["keyword"]
         current_page = response.meta["page"]
-        self.logger.info(f"Processing page {current_page+1} for keyword: '{keyword}'")
         
-        # Try multiple selectors to find search results
-        # Modern Google search results structure (as of March 2025)
-        search_results = []
+        self.logger.info(f"Processing page {current_page+1} for keyword: '{keyword}'")
 
-        # Primary attempt - target the MjjYud containers directly
-        results = response.xpath("//div[contains(@class, 'MjjYud')]")
-        if results:
-            self.logger.info(f"Found {len(results)} raw results on page {current_page+1} for '{keyword}'")
-            search_results = results
-
-        # Fallback approach if no results found
-        if not search_results:
-            # Look for any search result container with known classes
-            fallback_xpath = "//div[contains(@class, 'g') or contains(@class, 'yuRUbf') or contains(@class, 'Ww4FFb')]"
-            results = response.xpath(fallback_xpath)
-            if results:
-                self.logger.info(f"Using fallback selector - found {len(results)} results on page {current_page+1}")
-                search_results = results
-
+        result_blocks = response.css("div.ezO2md")
+        
+        self.logger.info(f"Found {len(result_blocks)} raw results on page {current_page+1} for '{keyword}'")
+        
         # Process search results
         results_on_page = 0
-        for result in search_results:
-            # Extract title with more specific XPath
-            title = None
-            title_xpaths = [
-                ".//h3[contains(@class, 'LC20lb')]/text()",
-                ".//h3[@class='LC20lb MBeuO DKV0Md']/text()",
-                ".//div[contains(@class, 'yuRUbf')]//h3/text()"
-            ]
+        
+        for result in result_blocks:
+            # Extract link - find <a> tag inside the result block
+            link_raw = result.css("a::attr(href)").get()
             
-            for xpath in title_xpaths:
-                title_extract = result.xpath(xpath).get()
-                if title_extract:
-                    title = title_extract.strip()
-                    break
+            # Extract title - find <span class="CVA68e"> inside the <a> tag
+            title = result.css("a span.CVA68e::text").get()
             
-            # Extract link with more specific XPath
-            link = None
-            link_xpaths = [
-                ".//a[h3]/@href",
-                ".//div[contains(@class, 'yuRUbf')]//a/@href",
-                ".//div//a[@jsname='UWckNb']/@href"
-            ]
+            # Extract description - find <span class="FrIlee"> 
+            description = result.css("span.FrIlee::text").get()
             
-            for xpath in link_xpaths:
-                link_extract = result.xpath(xpath).get()
-                if link_extract:
-                    link = link_extract
-                    break
-            
-            # Only yield if both title and link were found and link not already visited
-            if title and link and link not in self.visited_urls:
-                # Skip non-http links or google result page links
-                if not link.startswith('http') or 'google.com/search' in link:
-                    continue
-                    
-                # Mark as visited
-                self.visited_urls.add(link)
+            # Process link if it exists
+            if link_raw and title:
+                # Clean and decode the link URL
+                link = urllib.parse.unquote(link_raw.split("&")[0].replace("/url?q=", ""))
                 
-                # Yield the result
-                item = {
-                    'keyword': keyword,
-                    'title': title,
-                    'link': link
-                }
-                results_on_page += 1
-                self.results_count[keyword] += 1
-                yield item
+                # Check if it's a valid link and not already visited
+                if link.startswith('http') and 'google.com/search' not in link and link not in self.visited_urls:
+                    # Mark as visited
+                    self.visited_urls.add(link)
+                    
+                    # Create and yield the result item
+                    item = {
+                        'keyword': keyword,
+                        'title': title.strip(),
+                        'link': link,
+                        'description': description.strip() if description else ""
+                    }
+                    
+                    results_on_page += 1
+                    self.results_count[keyword] += 1
+                    yield item
         
         self.logger.info(f"Extracted {results_on_page} valid results from page {current_page+1} for '{keyword}'")
         self.logger.info(f"Total results for '{keyword}': {self.results_count[keyword]}/{self.results_per_keyword}")
         
         # Check if we need to fetch the next page for this keyword
-        if (self.results_count[keyword] < self.results_per_keyword and 
-            current_page < self.max_pages - 1 and 
-            results_on_page > 0):  # Stop if current page had no results
+        should_continue = (
+            self.results_count[keyword] < self.results_per_keyword and  # Haven't found enough results
+            current_page < self.max_pages - 1 and  # Haven't visited too many pages
+            results_on_page > 0  # Current page had results
+        )
+        
+        if should_continue:
+            # Look for the "Tiếp" button link
+            next_page_link = response.css("a.frGj1b::attr(href)").get()
             
-            next_page = current_page + 1
-            encoded_keyword = urllib.parse.quote(keyword)
-            next_url = f"https://www.google.com/search?q={encoded_keyword}&start={next_page*10}&hl=vi&gl=vn&pws=0"
-            
-            self.logger.info(f"Moving to page {next_page+1} for '{keyword}' to get more results")
-            
-            # Use random user agent for each request
-            user_agent = self.get_random_user_agent()
-            
-            yield scrapy.Request(
-                url=next_url,
-                callback=self.parse,
-                meta={
-                    "keyword": keyword,
-                    "page": next_page,
-                    "selenium": True,
-                    "dont_merge_cookies": True,
-                    "wait_time": 3
-                },
-                headers={"User-Agent": user_agent}
-            )
+            if next_page_link:
+                next_url = f"https://www.google.com{next_page_link}"
+                
+                self.logger.info(f"Moving to next page for '{keyword}' to get more results")
+                
+                # Use random user agent for each request
+                user_agent = self.get_random_user_agent()
+                
+                yield scrapy.Request(
+                    url=next_url,
+                    callback=self.parse,
+                    meta={
+                        "keyword": keyword,
+                        "page": current_page + 1,  # Increment page counter
+                        "selenium": False,
+                        "dont_merge_cookies": False,
+                        "wait_time": 3
+                    },
+                    headers={"User-Agent": user_agent, "Accept": "*/*"},
+                    cookies=self.cookies  # Add cookies to bypass consent page
+                )
+            else:
+                self.logger.warning(f"⚠ No 'Next' button found for '{keyword}' after {self.results_count[keyword]} results")
         else:
             if self.results_count[keyword] >= self.results_per_keyword:
                 self.logger.info(f"✓ Reached target of {self.results_per_keyword} results for '{keyword}'")
