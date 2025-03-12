@@ -40,3 +40,8 @@ def silence_scrapy_log():
             }
         }
     })
+
+def silence_trafilatura_log():
+    """Silence Trafilatura loggers to reduce noise"""
+    logger = logging.getLogger("trafilatura")
+    logger.setLevel(logging.INFO)
