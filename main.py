@@ -10,7 +10,6 @@ from utils.logger import setup_logging
 def load_keywords():
     """Load keywords from file"""
     logger = setup_logging()
-    
     try:
         keywords_file = Path('keywords.txt')
         if not keywords_file.exists():
@@ -84,8 +83,7 @@ def main():
                 description=result['description']
             )
             """
-                content_data is a dictionary with the following keys:
-                ['title', 'url', 'description', 'content', 'keyword']
+                content_data is a dictionary
             """
             if content_data:
                 all_data.append(content_data)

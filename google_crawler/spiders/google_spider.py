@@ -91,7 +91,7 @@ class GoogleSpider(scrapy.Spider):
             
             # Extract description - find <span class="FrIlee"> 
             description_parts = result.css("span.FrIlee *::text").getall()
-            description = description_parts[-1].strip() if description_parts else ""
+            description = ' '.join([part.strip() for part in description_parts]).strip() if description_parts else ""
             
             # Process link if it exists
             if link_raw and title:
@@ -125,7 +125,7 @@ class GoogleSpider(scrapy.Spider):
         )
         
         if should_continue:
-            # Look for the "Tiếp" button link
+            # Look for the "Next" button link
             next_page_link = response.css("a.frGj1b::attr(href)").get()
             
             if next_page_link:
