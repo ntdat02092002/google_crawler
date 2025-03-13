@@ -61,18 +61,39 @@ class GoogleSpider(scrapy.Spider):
                 meta={
                     "keyword": keyword,
                     "page": 0,
-                    "selenium": True,
+                    "selenium": False,  # Default to regular requests
                     "dont_merge_cookies": False,
-                    "wait_time": 3  # Wait 3 seconds for the page to load
+                    "wait_time": 3,  # Wait 3 seconds for the page to load if use selenium
                 },
                 headers={"User-Agent": user_agent, "Accept": "*/*"},
-                cookies=self.cookies  # Add cookies to bypass consent page
+                cookies=self.cookies,  # Add cookies to bypass consent page
+                errback=self.errback_request  # Handle errors
             )
+
+    def errback_request(self, failure):
+        """
+        Handle request failures and retry with Selenium
+        This will be called after Scrapy's built-in retry mechanism has been exhausted
+        """
+        request = failure.request
+        keyword = request.meta.get('keyword', 'unknown')
+        current_page = request.meta.get('page', 'unknown')
+        
+        # Only retry with Selenium if not already using it
+        if not request.meta.get("selenium", False):
+            self.logger.warning(f"Request failed for '{keyword}' on page {current_page+1} after retries, switching to Selenium")
+            
+            # Create a new request using Selenium
+            yield request.replace(
+                meta={**request.meta, "selenium": True}
+            )
+        else:
+            self.logger.error(f"Selenium request for '{keyword}' on page {current_page+1} also failed. Giving up.")
 
     def parse(self, response):
         keyword = response.meta["keyword"]
         current_page = response.meta["page"]
-        
+                
         self.logger.info(f"Processing page {current_page+1} for keyword: '{keyword}'")
 
         result_blocks = response.css("div.ezO2md")
@@ -121,7 +142,7 @@ class GoogleSpider(scrapy.Spider):
         should_continue = (
             self.results_count[keyword] < self.results_per_keyword and  # Haven't found enough results
             current_page < self.max_pages - 1 and  # Haven't visited too many pages
-            results_on_page > 0  # Current page had results
+            len(result_blocks) > 0  # Current page had results
         )
         
         if should_continue:
@@ -135,7 +156,7 @@ class GoogleSpider(scrapy.Spider):
                 
                 # Use random user agent for each request
                 user_agent = self.get_random_user_agent()
-                
+                                
                 # Let Scrapy's AutoThrottle handle the timing
                 yield scrapy.Request(
                     url=next_url,
@@ -143,12 +164,13 @@ class GoogleSpider(scrapy.Spider):
                     meta={
                         "keyword": keyword,
                         "page": current_page + 1,  # Increment page counter
-                        "selenium": True,
+                        "selenium": False,
                         "dont_merge_cookies": False,
                         "wait_time": 3
                     },
                     headers={"User-Agent": user_agent, "Accept": "*/*"},
-                    cookies=self.cookies  # Add cookies to bypass consent page
+                    cookies=self.cookies,  # Add cookies to bypass consent page
+                    errback=self.errback_request  # Handle errors
                 )
             else:
                 self.logger.warning(f"⚠ No 'Next' button found for '{keyword}' after {self.results_count[keyword]} results")
@@ -157,5 +179,5 @@ class GoogleSpider(scrapy.Spider):
                 self.logger.info(f"✓ Reached target of {self.results_per_keyword} results for '{keyword}'")
             elif current_page >= self.max_pages - 1:
                 self.logger.warning(f"⚠ Reached max page limit ({self.max_pages} pages) for '{keyword}' with only {self.results_count[keyword]} results")
-            elif results_on_page == 0:
+            elif not result_blocks:
                 self.logger.warning(f"⚠ No more results found for '{keyword}' after {self.results_count[keyword]} results")
