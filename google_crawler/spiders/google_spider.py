@@ -179,5 +179,5 @@ class GoogleSpider(scrapy.Spider):
                 self.logger.info(f"✓ Reached target of {self.results_per_keyword} results for '{keyword}'")
             elif current_page >= self.max_pages - 1:
                 self.logger.warning(f"⚠ Reached max page limit ({self.max_pages} pages) for '{keyword}' with only {self.results_count[keyword]} results")
-            elif results_on_page == 0:
+            elif not result_blocks:
                 self.logger.warning(f"⚠ No more results found for '{keyword}' after {self.results_count[keyword]} results")
