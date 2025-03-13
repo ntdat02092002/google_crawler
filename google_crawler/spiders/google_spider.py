@@ -77,18 +77,18 @@ class GoogleSpider(scrapy.Spider):
         """
         request = failure.request
         keyword = request.meta.get('keyword', 'unknown')
+        current_page = request.meta.get('page', 'unknown')
         
         # Only retry with Selenium if not already using it
         if not request.meta.get("selenium", False):
-            self.logger.warning(f"Request failed for '{keyword}' after retries, switching to Selenium")
+            self.logger.warning(f"Request failed for '{keyword}' on page {current_page+1} after retries, switching to Selenium")
             
             # Create a new request using Selenium
-            return request.replace(
+            yield request.replace(
                 meta={**request.meta, "selenium": True}
             )
         else:
-            self.logger.error(f"Selenium request for '{keyword}' also failed. Giving up.")
-            return None
+            self.logger.error(f"Selenium request for '{keyword}' on page {current_page+1} also failed. Giving up.")
 
     def parse(self, response):
         keyword = response.meta["keyword"]
@@ -142,7 +142,7 @@ class GoogleSpider(scrapy.Spider):
         should_continue = (
             self.results_count[keyword] < self.results_per_keyword and  # Haven't found enough results
             current_page < self.max_pages - 1 and  # Haven't visited too many pages
-            results_on_page > 0  # Current page had results
+            result_blocks > 0  # Current page had results
         )
         
         if should_continue:

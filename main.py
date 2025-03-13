@@ -46,50 +46,30 @@ def main():
             return
         
         # Configure crawler parameters
-        results_per_keyword = 20  # Target number of results per keyword
+        results_per_keyword = 10  # Target number of results per keyword
         max_pages = 3  # Maximum pages to check per keyword
-            
-        # Step 2: Crawl Google for search results
-        logger.info("Starting Google search crawler...")
-        google_crawler = GoogleCrawler(logger=logger)
-        search_results = google_crawler.run(
-            keywords=keywords, 
-            results_per_keyword=results_per_keyword,
-            max_pages=max_pages
-        )
         
-        if not search_results:
-            logger.error("No search results found. Exiting.")
-            return
-            
-        logger.info(f"Found {len(search_results)} search results")
-        
-        # Step 3: Extract content from each URL
-        logger.info("Starting content extraction...")
+        # Step 2: Initialize content scraper
+        logger.info("Initializing content scraper...")
         content_scraper = ContentScraper(logger=logger)
         
-        all_data = []
-        for idx, result in enumerate(search_results, 1):
-            logger.info(f"Processing result {idx}/{len(search_results)}: {result['title']}")
-            
-            """
-                each result is a dictionary with the following
-                keys: ['keyword', 'title', 'link', 'description']
-            """
-            content_data = content_scraper.scrape(
-                url=result['link'],
-                keyword=result['keyword'],
-                title=result['title'],
-                description=result['description']
-            )
-            """
-                content_data is a dictionary
-            """
-            if content_data:
-                all_data.append(content_data)
+        # Step 3: Run Google crawler with immediate content extraction
+        logger.info("Starting Google search crawler with immediate content extraction...")
+        google_crawler = GoogleCrawler(logger=logger)
+        search_results, content_results = google_crawler.run(
+            keywords=keywords, 
+            results_per_keyword=results_per_keyword,
+            max_pages=max_pages,
+            content_extractor=content_scraper,
+            extractor_method='scrape'  # Method name to call on content_scraper
+        )
         
-        # Step 4: Save results to Excel
-        if all_data:
+        # Step 4: Log results summary
+        logger.info(f"Google search found {len(search_results)} total results")
+        logger.info(f"Successfully extracted content from {len(content_results)} URLs")
+        
+        # Step 5: Save results to Excel
+        if content_results:
             # Create output dir if needed
             if not os.path.exists('outputs'):
                 os.makedirs('outputs')
@@ -99,9 +79,9 @@ def main():
             output_file = f"outputs/search_results_{timestamp}.xlsx"
             
             # Save to Excel
-            df = pd.DataFrame(all_data)
+            df = pd.DataFrame(content_results)
             df.to_excel(output_file, index=False)
-            logger.info(f"Saved {len(all_data)} results to {output_file}")
+            logger.info(f"Saved {len(content_results)} results to {output_file}")
         else:
             logger.warning("No content was extracted. Excel file not created.")
             

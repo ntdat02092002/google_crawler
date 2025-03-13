@@ -43,5 +43,13 @@ def silence_scrapy_log():
 
 def silence_trafilatura_log():
     """Silence Trafilatura loggers to reduce noise"""
-    logger = logging.getLogger("trafilatura")
-    logger.setLevel(logging.INFO)
+    trafilatura_logger = logging.getLogger("trafilatura")
+    trafilatura_logger.setLevel(logging.INFO)
+
+    urllib3_logger = logging.getLogger('urllib3')
+    urllib3_logger.setLevel(logging.INFO)
+
+def silence_noisy_log():
+    """Silence noisy loggers to reduce noise"""
+    silence_trafilatura_log()
+    silence_scrapy_log()

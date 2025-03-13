@@ -27,7 +27,7 @@ class ContentScraper:
 
         silence_trafilatura_log()
     
-    def scrape(self, url, keyword, title, description):
+    def scrape(self, search_result):
         """
         Scrape content from a specific URL using Trafilatura's bare_extraction.
         
@@ -40,6 +40,11 @@ class ContentScraper:
         Returns:
             dict: Scraped content with standardized fields
         """
+        url = search_result['link']
+        keyword = search_result['keyword']
+        title = search_result['title']
+        description = search_result.get('description', '')
+        
         self.logger.info(f"Scraping content from: {url}")
         
         try:  
