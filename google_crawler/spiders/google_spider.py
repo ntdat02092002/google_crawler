@@ -142,7 +142,7 @@ class GoogleSpider(scrapy.Spider):
         should_continue = (
             self.results_count[keyword] < self.results_per_keyword and  # Haven't found enough results
             current_page < self.max_pages - 1 and  # Haven't visited too many pages
-            result_blocks > 0  # Current page had results
+            len(result_blocks) > 0  # Current page had results
         )
         
         if should_continue:
