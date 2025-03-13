@@ -46,7 +46,7 @@ def main():
             return
         
         # Configure crawler parameters
-        results_per_keyword = 10  # Target number of results per keyword
+        results_per_keyword = 100  # Target number of results per keyword
         max_pages = 3  # Maximum pages to check per keyword
         
         # Step 2: Initialize content scraper
@@ -65,6 +65,7 @@ def main():
         )
         
         # Step 4: Log results summary
+        logger.info("===== Workflow Summary =====")
         logger.info(f"Google search found {len(search_results)} total results")
         logger.info(f"Successfully extracted content from {len(content_results)} URLs")
         
@@ -80,6 +81,11 @@ def main():
             
             # Save to Excel
             df = pd.DataFrame(content_results)
+
+            # count results per keyword
+            keyword_counts = df['keyword'].value_counts().to_dict()
+            logger.info(f"Results per keyword: {keyword_counts}")
+
             df.to_excel(output_file, index=False)
             logger.info(f"Saved {len(content_results)} results to {output_file}")
         else:
