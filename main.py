@@ -47,7 +47,7 @@ def main():
         
         # Configure crawler parameters
         results_per_keyword = 100  # Target number of results per keyword
-        max_pages = 3  # Maximum pages to check per keyword
+        max_pages = 4  # Maximum pages to check per keyword
         
         # Step 2: Initialize content scraper
         logger.info("Initializing content scraper...")
@@ -63,7 +63,8 @@ def main():
             content_extractor=content_scraper,
             extractor_method='scrape'  # Method name to call on content_scraper
         )
-        
+        content_scraper.close()
+
         # Step 4: Log results summary
         logger.info("===== Workflow Summary =====")
         logger.info(f"Google search found {len(search_results)} total results")

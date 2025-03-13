@@ -26,6 +26,7 @@ class ContentScraper:
         self.logger.debug(f"Loaded Trafilatura config: {self.custom_config}")
 
         silence_trafilatura_log()
+        self.driver = None # Selenium driver instance
     
     def scrape(self, search_result):
         """
@@ -55,9 +56,8 @@ class ContentScraper:
             )
             
             if downloaded is None:
-                self.logger.error(f"Failed to download content from {url}")
-                return self._create_fallback_result(url, keyword, title, description, 
-                                                  "Failed to download content")
+                self.logger.warning(f"Failed to download content from {url} with Trafilatura, trying Selenium")
+                return self._try_selenium_scrape(url, keyword, title, description)
             
             # Extract rich content using bare_extraction
             extracted = trafilatura.bare_extraction(
@@ -68,9 +68,8 @@ class ContentScraper:
             )
             
             if not extracted:
-                self.logger.warning(f"Trafilatura couldn't extract content from {url}")
-                return self._create_fallback_result(url, keyword, title, description, 
-                                                  "No content could be extracted")
+                self.logger.warning(f"Trafilatura couldn't extract content from downloaded {url}, trying Selenium")
+                return self._try_selenium_scrape(url, keyword, title, description)
             
             # Process extracted content
             return self._process_extracted_content(extracted, url, keyword, title, description)
@@ -79,6 +78,69 @@ class ContentScraper:
             self.logger.error(f"Error scraping {url}: {str(e)}")
             return self._create_fallback_result(url, keyword, title, description, 
                                               f"Error extracting content")
+    
+    def _try_selenium_scrape(self, url, keyword, title, description):
+        """Use Selenium as fallback for downloading and extracting content"""
+        self.logger.info(f"Attempting to scrape {url} using Selenium")
+        
+        try:
+            # Initialize Selenium driver if not already done
+            if self.driver is None:
+                from utils.selenium_utils import selenium_driver_factory
+                self.driver = selenium_driver_factory(headless=False)
+                # Set page load timeout
+                self.driver.set_page_load_timeout(30)
+            
+            # Navigate to URL with proper error handling
+            try:
+                from selenium.common.exceptions import TimeoutException, WebDriverException
+                from selenium.webdriver.support.ui import WebDriverWait
+                from selenium.webdriver.support import expected_conditions as EC
+                from selenium.webdriver.common.by import By
+                
+                self.driver.get(url)
+                WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located((By.TAG_NAME, "body"))
+                )
+            except TimeoutException:
+                self.logger.warning(f"Selenium: Timeout while loading page: {url}")
+                return self._create_fallback_result(url, keyword, title, description, 
+                                            f"Failed to download content")
+            except WebDriverException as e:
+                error_message = str(e).split('\n')[0].strip()
+                self.logger.error(f"Selenium: Connection error for {url}: {str(e)}")
+                return self._create_fallback_result(url, keyword, title, description, 
+                                            f"Failed to download content")
+            
+            # Add a small delay to ensure dynamic content loads
+            time.sleep(2)
+            
+            # Get the page source
+            page_source = self.driver.page_source
+            
+            # Use Trafilatura to extract content from the page source
+            extracted = trafilatura.bare_extraction(
+                page_source,
+                include_images=True,
+                with_metadata=True,
+                config=self.custom_config
+            )
+            
+            if not extracted:
+                self.logger.warning(f"Trafilatura (with Selenium) couldn't extract content from downloaded {url}")
+                return self._create_fallback_result(url, keyword, title, description, 
+                                                  "No content could be extracted")
+            
+            # Process extracted content
+            return self._process_extracted_content(extracted, url, keyword, title, description)
+            
+        except Exception as e:
+            self.logger.error(f"Error scraping (with Selenium) {url}: {str(e)}")
+            return self._create_fallback_result(url, keyword, title, description, 
+                                              f"Error extracting content")
+        finally:
+            # We don't close the driver here as we might reuse it for other scrapes
+            pass
     
     def _process_extracted_content(self, extracted, url, keyword, search_title, search_description):
         """Process the extracted content and return standardized dict"""
@@ -217,3 +279,12 @@ class ContentScraper:
             'site': "",
             'keyword': keyword
         }
+    
+    def close(self):
+        """Close selenium driver if it exists"""
+        if self.driver:
+            try:
+                self.driver.quit()
+                self.driver = None
+            except Exception as e:
+                self.logger.error(f"Error closing Selenium driver: {str(e)}")
