@@ -10,6 +10,7 @@ from trafilatura.settings import use_config
 
 from utils.user_agents import get_user_agent_list
 from utils.logger import silence_trafilatura_log
+from utils.url import make_absolute_url, get_base_domain
 
 class ContentScraper:
     """
@@ -209,7 +210,7 @@ class ContentScraper:
             return "", []
             
         images = []
-        base_domain = self._get_base_domain(base_url)
+        base_domain = get_base_domain(base_url)
         
         # Process Markdown images with both absolute and relative URLs
         # Format: ![alt text](image_path)
@@ -218,7 +219,7 @@ class ContentScraper:
         def replace_markdown_image(match):
             img_path = match.group(2)
             # Convert relative URL to absolute URL if needed
-            img_url = self._make_absolute_url(base_url, img_path)
+            img_url = make_absolute_url(base_url, img_path)
             
             if img_url not in images:
                 images.append(img_url)
@@ -242,28 +243,6 @@ class ContentScraper:
         content_with_placeholders = re.sub(url_pattern, replace_url_with_placeholder, content_with_placeholders)
         
         return content_with_placeholders, images
-
-    def _make_absolute_url(self, base_url, relative_url):
-        """Convert a relative URL to an absolute URL"""
-        if not relative_url:
-            return ""
-            
-        # If it's already an absolute URL, return it as is
-        if relative_url.startswith(('http://', 'https://')):
-            return relative_url
-            
-        # Parse the base URL to get components
-        from urllib.parse import urlparse, urljoin
-        
-        # Use urljoin which properly handles all cases of relative URLs
-        absolute_url = urljoin(base_url, relative_url)
-        return absolute_url
-
-    def _get_base_domain(self, url):
-        """Extract the base domain from a URL"""
-        from urllib.parse import urlparse
-        parsed = urlparse(url)
-        return f"{parsed.scheme}://{parsed.netloc}"
     
     def _create_fallback_result(self, url, keyword, title, description, error_message):
         """Create a fallback result with error message"""
