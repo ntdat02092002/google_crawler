@@ -6,28 +6,7 @@ from datetime import datetime
 from google_crawler.google_crawler import GoogleCrawler
 from content_scraper.content_scraper import ContentScraper
 from utils.logger import setup_logging
-
-def load_keywords():
-    """Load keywords from file"""
-    logger = setup_logging()
-    try:
-        keywords_file = Path('keywords.txt')
-        if not keywords_file.exists():
-            logger.error("Keywords file not found!")
-            return []
-        with open('keywords.txt', 'r', encoding='utf-8') as f:
-            keywords = [line.strip() for line in f if line.strip()]
-        
-        if not keywords:
-            logger.error("No keywords found in file!")
-            return []
-            
-        logger.info(f"Loaded {len(keywords)} keywords for searching: {keywords}")
-        return keywords
-        
-    except Exception as e:
-        logger.error(f"Error loading keywords: {str(e)}")
-        return []  # Return an empty list instead of default keywords
+from utils.load_files import load_keywords, load_whitelist
 
 def main():
     """Main function to run the crawler and scraper workflow"""
@@ -48,7 +27,8 @@ def main():
         # Configure crawler parameters
         results_per_keyword = 100  # Target number of results per keyword
         max_pages = 4  # Maximum pages to check per keyword
-        
+        whitelist = load_whitelist()
+
         # Step 2: Initialize content scraper
         logger.info("Initializing content scraper...")
         content_scraper = ContentScraper(logger=logger)
@@ -60,6 +40,7 @@ def main():
             keywords=keywords, 
             results_per_keyword=results_per_keyword,
             max_pages=max_pages,
+            whitelist=whitelist,
             content_extractor=content_scraper,
             extractor_method='scrape'  # Method name to call on content_scraper
         )

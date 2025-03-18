@@ -26,7 +26,8 @@ class GoogleCrawler:
         self.content_results = []  # Store content extraction results if scraper is provided
             
     def run(self, keywords=None, results_per_keyword=20, max_pages=10,
-            content_extractor=None, extractor_method=None, **extractor_kwargs):
+            whitelist=None, content_extractor=None, extractor_method=None, 
+            **extractor_kwargs):
         """
     Run the Google crawler and return search results directly
     
@@ -34,6 +35,7 @@ class GoogleCrawler:
         keywords (list): List of keywords to search for
         results_per_keyword (int): Target number of results per keyword
         max_pages (int): Maximum number of pages to crawl per keyword
+        whitelist (list): Optional list of domains to skip
         content_extractor: Optional object that will extract content from search results
         extractor_method (str): Name of the method to call on the content_extractor
         **extractor_kwargs: Additional keyword arguments to pass to the extractor method
@@ -80,7 +82,8 @@ class GoogleCrawler:
             process.crawl(GoogleSpider, 
                          keywords=keywords, 
                          results_per_keyword=results_per_keyword,
-                         max_pages=max_pages)
+                         max_pages=max_pages,
+                         whitelist=whitelist)
             
             # Run the crawler
             self.logger.info(f"Starting Google search crawling (with content extractor: {self._content_extractor is not None})...")

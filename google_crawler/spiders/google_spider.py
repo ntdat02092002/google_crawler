@@ -4,11 +4,12 @@ import urllib.parse
 from urllib.parse import unquote
 
 from utils.user_agents import get_lynx_useragent
+from utils.url import is_in_whitelist
 
 class GoogleSpider(scrapy.Spider):
     name = "GoogleSpider" 
     
-    def __init__(self, keywords=None, results_per_keyword=20, max_pages=10, *args, **kwargs):
+    def __init__(self, keywords=None, results_per_keyword=20, max_pages=10, whitelist=None, *args, **kwargs):
         """
         Initialize spider with keywords provided externally
         
@@ -16,14 +17,18 @@ class GoogleSpider(scrapy.Spider):
             keywords (list): List of keywords to search for
             results_per_keyword (int): Number of results to fetch per keyword
             max_pages (int): Maximum number of pages to crawl per keyword
+            whitelist (list): List of domains to skip (whitelist)
         """
         super(GoogleSpider, self).__init__(*args, **kwargs)
-        self.keywords = keywords 
+        self.keywords = keywords or []
         self.results_per_keyword = int(results_per_keyword)  # Ensure it's an integer
         self.max_pages = int(max_pages)  # Ensure it's an integer
-        
+        self.whitelist = whitelist or []
+
         self.logger.info(f"Spider initialized with {len(self.keywords)} keywords")
         self.logger.info(f"Target: {self.results_per_keyword} results per keyword, max {self.max_pages} pages per keyword")
+        if self.whitelist:
+            self.logger.info(f"Whitelist enabled with {len(self.whitelist)} domains to skip")
 
         # Dictionary to track count of results per keyword
         self.results_count = {keyword: 0 for keyword in self.keywords}
@@ -119,8 +124,10 @@ class GoogleSpider(scrapy.Spider):
                 # Clean and decode the link URL
                 link = unquote(link_raw.split("&")[0].replace("/url?q=", ""))
                 
-                # Check if it's a valid link and not already visited
-                if link.startswith('http') and 'google.com/search' not in link and link not in self.visited_urls:
+                # Check if it's a valid link, not already visited, and not in whitelist
+                if (link.startswith('http') and 'google.com/search' not in link 
+                    and link not in self.visited_urls
+                    and not is_in_whitelist(link, self.whitelist)):
                     # Mark as visited
                     self.visited_urls.add(link)
                     
