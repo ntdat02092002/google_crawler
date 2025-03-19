@@ -88,7 +88,7 @@ class ContentScraper:
             # Initialize Selenium driver if not already done
             if self.driver is None:
                 from utils.selenium_utils import selenium_driver_factory
-                self.driver = selenium_driver_factory(headless=False)
+                self.driver = selenium_driver_factory(headless=True)
                 # Set page load timeout
                 self.driver.set_page_load_timeout(30)
             
@@ -162,7 +162,7 @@ class ContentScraper:
             main_image = extracted.image if extracted.image else ""
             # Convert main image to absolute URL if needed
             if main_image:
-                main_image = self._make_absolute_url(url, main_image)
+                main_image = make_absolute_url(url, main_image)
 
             # Get author if available
             author = extracted.author if extracted.author else ""
