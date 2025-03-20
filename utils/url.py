@@ -1,4 +1,4 @@
-import urllib.parse
+from urllib.parse import urlparse, urljoin
 
 def is_in_whitelist(url, whitelist):
     """
@@ -10,7 +10,7 @@ def is_in_whitelist(url, whitelist):
         
     try:
         # Parse the URL to extract the netloc (domain)
-        parsed_url = urllib.parse.urlparse(url)
+        parsed_url = urlparse(url)
         domain = parsed_url.netloc
         
         # Remove 'www.' prefix if exists
@@ -36,10 +36,10 @@ def make_absolute_url(base_url, relative_url):
             return relative_url
         
         # Use urljoin which properly handles all cases of relative URLs
-        absolute_url = parse.urljoin(base_url, relative_url)
+        absolute_url = urljoin(base_url, relative_url)
         return absolute_url
 
 def get_base_domain(url):
         """Extract the base domain from a URL"""
-        parsed = parse.urlparse(url)
+        parsed = urlparse(url)
         return f"{parsed.scheme}://{parsed.netloc}"

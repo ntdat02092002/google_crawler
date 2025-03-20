@@ -19,7 +19,7 @@ RETRY_HTTP_CODES = [500, 502, 503, 504, 403, 408, 429]
 FEED_EXPORT_ENCODING = 'utf-8'
 
 # Turn off headless mode to allow user to solve CAPTCHAs
-SELENIUM_HEADLESS = False
+SELENIUM_HEADLESS = True
 SELENIUM_DRIVER_WAIT_TIME = 10
 
 # Tell scrapy-selenium to use our factory function
