@@ -17,7 +17,7 @@ class ContentScraper:
     Content scraper that uses Trafilatura library to scrape content from a URL. 
     """
     
-    def __init__(self, logger=None):
+    def __init__(self, logger=None, selenium_headless=True):
         """Initialize the content scraper"""
         self.logger = logger or logging.getLogger(self.__class__.__name__)
 
@@ -28,6 +28,7 @@ class ContentScraper:
 
         silence_trafilatura_log()
         self.driver = None # Selenium driver instance
+        self.selenium_headless = selenium_headless # Use headless mode for Selenium
     
     def scrape(self, search_result):
         """
@@ -88,7 +89,7 @@ class ContentScraper:
             # Initialize Selenium driver if not already done
             if self.driver is None:
                 from utils.selenium_utils import selenium_driver_factory
-                self.driver = selenium_driver_factory(headless=True)
+                self.driver = selenium_driver_factory(headless=self.selenium_headless)
                 # Set page load timeout
                 self.driver.set_page_load_timeout(30)
             

@@ -31,7 +31,7 @@ def main():
 
         # Step 2: Initialize content scraper
         logger.info("Initializing content scraper...")
-        content_scraper = ContentScraper(logger=logger)
+        content_scraper = ContentScraper(logger=logger, selenium_headless=True)
         
         # Step 3: Run Google crawler with immediate content extraction
         logger.info("Starting Google search crawler with immediate content extraction...")
